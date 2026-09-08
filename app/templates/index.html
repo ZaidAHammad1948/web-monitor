@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Performance Monitor</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 300;
+        }
+        .header-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        .metric-title {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .metric-sub {
+            font-size: 14px;
+            color: #999;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+        }
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #f5576c 0%, #ff6b6b 100%);
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .detail-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .detail-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #666;
+        }
+        .detail-value {
+            color: #333;
+            font-weight: 500;
+        }
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .header-info {
+                margin-top: 10px;
+            }
+            .metric-value {
+                font-size: 24px;
+            }
+        }
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-good { background: #4caf50; }
+        .status-warning { background: #ff9800; }
+        .status-danger { background: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📊 System Performance Monitor</h1>
+                <div style="margin-top: 8px; opacity: 0.8;">
+                    <span class="status-indicator status-good" id="statusIndicator"></span>
+                    System Status: <span id="systemStatus">Online</span>
+                </div>
+            </div>
+            <div class="header-info">
+                <div>Host: <span id="hostname">{{ hostname }}</span></div>
+                <div style="margin-top: 5px;">Uptime: <span id="uptime">Loading...</span></div>
+                <button class="refresh-btn" onclick="refreshData()" id="refreshBtn">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-title">CPU Usage</div>
+                <div class="metric-value" id="cpuValue">0%</div>
+                <div class="metric-sub">Cores: <span id="cpuCores">0</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cpuBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Memory Usage</div>
+                <div class="metric-value" id="memoryValue">0%</div>
+                <div class="metric-sub"><span id="memoryUsed">0</span> GB / <span id="memoryTotal">0</span> GB</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="memoryBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Disk Usage</div>
+                <div class="metric-value" id="diskValue">0%</div>
+                <div class="metric-sub"><span id="diskUsed">0</span> GB / <span id="diskTotal">0</span> GB</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="diskBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Processes</div>
+                <div class="metric-value" id="processCount">0</div>
+                <div class="metric-sub">Running</div>
+            </div>
+        </div>
+
+        <div class="details-grid">
+            <div class="detail-card">
+                <h3>💾 Memory Details</h3>
+                <div class="detail-item">
+                    <span class="detail-label">Available</span>
+                    <span class="detail-value" id="memAvailable">0 GB</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Swap Used</span>
+                    <span class="detail-value" id="swapUsed">0 GB</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Swap Total</span>
+                    <span class="detail-value" id="swapTotal">0 GB</span>
+                </div>
+            </div>
+
+            <div class="detail-card">
+                <h3>🌐 Network</h3>
+                <div class="detail-item">
+                    <span class="detail-label">Bytes Sent</span>
+                    <span class="detail-value" id="netSent">0 GB</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Bytes Received</span>
+                    <span class="detail-value" id="netRecv">0 GB</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Packets Sent</span>
+                    <span class="detail-value" id="packetsSent">0</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Packets Received</span>
+                    <span class="detail-value" id="packetsRecv">0</span>
+                </div>
+            </div>
+
+            <div class="detail-card">
+                <h3>⚡ CPU Details</h3>
+                <div class="detail-item">
+                    <span class="detail-label">Current Frequency</span>
+                    <span class="detail-value" id="cpuFreq">0 GHz</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Max Frequency</span>
+                    <span class="detail-value" id="cpuMaxFreq">0 GHz</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let isRefreshing = false;
+
+        function updateStatusIndicator(value) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('systemStatus');
+            
+            indicator.className = 'status-indicator';
+            if (value < 70) {
+                indicator.classList.add('status-good');
+                statusText.textContent = 'Good';
+            } else if (value < 85) {
+                indicator.classList.add('status-warning');
+                statusText.textContent = 'Warning';
+            } else {
+                indicator.classList.add('status-danger');
+                statusText.textContent = 'Critical';
+            }
+        }
+
+        function fetchMetrics() {
+            if (isRefreshing) return;
+            isRefreshing = true;
+            
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Loading...';
+
+            fetch('/api/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    // Update CPU
+                    document.getElementById('cpuValue').textContent = data.cpu.percent + '%';
+                    document.getElementById('cpuCores').textContent = data.cpu.count;
+                    document.getElementById('cpuBar').style.width = data.cpu.percent + '%';
+                    
+                    // Update Memory
+                    document.getElementById('memoryValue').textContent = data.memory.percent + '%';
+                    document.getElementById('memoryUsed').textContent = data.memory.used;
+                    document.getElementById('memoryTotal').textContent = data.memory.total;
+                    document.getElementById('memoryBar').style.width = data.memory.percent + '%';
+                    
+                    // Update Disk
+                    document.getElementById('diskValue').textContent = data.disk.percent + '%';
+                    document.getElementById('diskUsed').textContent = data.disk.used;
+                    document.getElementById('diskTotal').textContent = data.disk.total;
+                    document.getElementById('diskBar').style.width = data.disk.percent + '%';
+                    
+                    // Update Process Count
+                    document.getElementById('processCount').textContent = data.process_count;
+                    
+                    // Update Memory Details
+                    document.getElementById('memAvailable').textContent = data.memory.available + ' GB';
+                    document.getElementById('swapUsed').textContent = data.memory.swap_used + ' GB';
+                    document.getElementById('swapTotal').textContent = data.memory.swap_total + ' GB';
+                    
+                    // Update Network
+                    document.getElementById('netSent').textContent = data.network.bytes_sent + ' GB';
+                    document.getElementById('netRecv').textContent = data.network.bytes_recv + ' GB';
+                    document.getElementById('packetsSent').textContent = data.network.packets_sent;
+                    document.getElementById('packetsRecv').textContent = data.network.packets_recv;
+                    
+                    // Update CPU Details
+                    document.getElementById('cpuFreq').textContent = data.cpu.freq_current + ' GHz';
+                    document.getElementById('cpuMaxFreq').textContent = data.cpu.freq_max + ' GHz';
+                    
+                    // Update Uptime
+                    document.getElementById('uptime').textContent = data.uptime;
+                    
+                    // Update Hostname
+                    document.getElementById('hostname').textContent = data.hostname;
+                    
+                    // Update Status Indicator
+                    updateStatusIndicator(Math.max(data.cpu.percent, data.memory.percent, data.disk.percent));
+                    
+                    isRefreshing = false;
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Refresh';
+                })
+                .catch(error => {
+                    console.error('Error fetching metrics:', error);
+                    isRefreshing = false;
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Refresh';
+                });
+        }
+
+        function refreshData() {
+            fetchMetrics();
+            // Reset auto-refresh timer
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(fetchMetrics, 5000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMetrics();
+            autoRefreshInterval = setInterval(fetchMetrics, 5000);
+        });
+    </script>
+</body>
+</html>

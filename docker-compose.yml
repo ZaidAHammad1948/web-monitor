@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web-monitor:
+    build: .
+    container_name: web-monitor
+    ports:
+      - "5000:5000"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    # For better performance monitoring, run with privileged mode or add specific capabilities
+    # Uncomment if needed:
+    # privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - SYS_PTRACE
